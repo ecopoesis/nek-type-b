@@ -13,10 +13,11 @@ from pathlib import Path
 
 from build123d import export_step, export_stl
 
-from nek.case import build
+from nek.case import build, sections
 from nek.params import VARIANTS
 from nek.printability import check
-from nek.render import render
+from nek.plates import export_dxf, plate
+from nek.render import render, render_plates
 
 OUT = Path(__file__).resolve().parent / "out"
 ALUMINUM_KG_PER_MM3 = 2.70e-6
@@ -61,6 +62,18 @@ def main() -> int:
             if not args.no_render:
                 render(parts, d / "preview.png", title=f"NEK Type B — {variant}")
             print(f"  wrote {d}")
+
+    if not args.no_export:
+        # plates are the same for every variant
+        p = VARIANTS[(args.variant or ["aluminum"])[0]]
+        faces = {name: plate(sec, p) for name, sec in sections(p).items()}
+        d = OUT / "plates"
+        d.mkdir(parents=True, exist_ok=True)
+        for name, face in faces.items():
+            export_dxf(face, d / f"{name}_plate.dxf")
+        if not args.no_render:
+            render_plates(faces, d / "plates.png", title="Switch plates (1.5 mm steel)")
+        print(f"\n== plates\n  wrote {d}")
 
     return 0 if ok else 1
 

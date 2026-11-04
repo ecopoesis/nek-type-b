@@ -40,3 +40,20 @@ def render(parts: dict, path, views=((25, -60), (25, -120), (90, -90), (-35, -70
     fig.tight_layout()
     fig.savefig(path)
     plt.close(fig)
+
+
+def render_plates(faces: dict, path, title="plates"):
+    """Outline drawing of 2D plate faces, side by side, to scale."""
+    fig, axes = plt.subplots(1, len(faces), figsize=(5 * len(faces), 5), dpi=110)
+    for ax, (name, face) in zip(np.atleast_1d(axes), faces.items()):
+        for wire in face.wires():
+            for e in wire.edges():
+                pts = np.array([[q.X, q.Y] for q in e.positions([i / 24 for i in range(25)])])
+                ax.plot(pts[:, 0], pts[:, 1], "k-", lw=0.6)
+        ax.set_aspect("equal")
+        ax.set_title(name)
+        ax.axis("off")
+    fig.suptitle(title)
+    fig.tight_layout()
+    fig.savefig(path)
+    plt.close(fig)

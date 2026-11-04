@@ -58,3 +58,31 @@ TYPE_A = {
 TYPE_A_CENTER_NORMAL = np.array([0.0, 0.173648178, 0.984807753])  # (0, sin 10°, cos 10°)
 TYPE_A_CENTER_POINT = np.array([-1.3818, -155.897, 147.4888])
 TYPE_A_PIVOT_INSET = 35.0  # pivot line, inward of each half's inner key edge
+
+
+def shifted(f: Frame, dx: float) -> Frame:
+    """Move a half sideways (world x). Its angles are unchanged, and because the centre plane's normal
+    has no x component, the half's pivot line stays on the centre plane."""
+    return Frame(origin=f.origin + np.array([dx, 0.0, 0.0]), ex=f.ex, ey=f.ey)
+
+
+def _rotation(axis: np.ndarray, angle: float) -> np.ndarray:
+    k = axis / np.linalg.norm(axis)
+    K = np.array([[0, -k[2], k[1]], [k[2], 0, -k[0]], [-k[1], k[0], 0]])
+    return np.eye(3) + np.sin(angle) * K + (1 - np.cos(angle)) * K @ K
+
+
+def folded(f: Frame, hinge_u: float, tent_deg: float) -> Frame:
+    """Fold the part of a frame beyond KLE x = hinge_u about the column direction (ey), so its rows
+    drop by `tent_deg` going away from the hinge (0 = level). The slope along the columns is unchanged,
+    and KLE coordinates stay continuous across the hinge."""
+    target = np.sign(f.ex[2]) * np.sin(np.radians(tent_deg))  # keep any drop on the same side
+    # Rotating about ey by t: ex -> ex cos t + up sin t, so z(t) = ex_z cos t + up_z sin t.
+    a, b = f.ex[2], f.up[2]
+    r, phase = np.hypot(a, b), np.arctan2(b, a)
+    ts = [phase + s * np.arccos(np.clip(target / r, -1, 1)) for s in (1, -1)]
+    t = min((((x + np.pi) % (2 * np.pi)) - np.pi for x in ts), key=abs)
+    R = _rotation(f.ey, t)
+    assert abs((R @ f.ex)[2] - target) < 1e-9
+    hinge = f.point(hinge_u, 0)
+    return Frame(origin=hinge + R @ (f.origin - hinge), ex=R @ f.ex, ey=R @ f.ey)

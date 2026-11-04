@@ -5,11 +5,14 @@ to be simpler, smaller, thinner and cheaper to machine.
 
 ## Fixed constraints (carried from Type A)
 
-These are not up for change. Key positions and angles are **measured from Type A's machined STEP**
+Key positions and angles *within each half* are **measured from Type A's machined STEP**
 (`body/target/body.step`), not taken from `body/body.py`'s nominal parameters. CadQuery's rotation
 composition and its non-orthogonal `CoordPlane` made the real angles differ from the script's
 10° / 25° / 10°, and the halves are not exact mirror images. The keyboard that was built is the one
 that's "perfect", so B copies it exactly. See `case/nek/frames.py` and `case/scripts/fit_type_a.py`.
+
+Two deliberate changes from Type A (see Halves below): the halves are slid together, and the right
+half's media/nav/arrow block is folded level.
 
 | Parameter | Right | Left | Notes |
 |---|---|---|---|
@@ -18,7 +21,7 @@ that's "perfect", so B copies it exactly. See `case/nek/frames.py` and `case/scr
 | Slope (rise toward the user) | 9.82° | 9.78° | **negative** slope: wrist edge is higher than the back |
 | Row yaw in plan view | 9.91° | 10.89° | script said ±12.5° |
 | Centre top | slope-only plane | | meets each half's plane 35 mm inside the inner keys |
-| Stack | PCB / 1.5 mm 304 SS plate / 0.031" Buna-N gasket / unibody case | | works well, keep |
+| Stack | PCB / 1.5 mm 304 SS plate / 0.031" Buna-N gasket / unibody case | | works well, keep (plate now a narrow frame) |
 | Bottom | 0.118" clear acrylic access panel | | keep |
 | Firmware | QMK | | keep |
 
@@ -28,9 +31,10 @@ that's "perfect", so B copies it exactly. See `case/nek/frames.py` and `case/scr
 |---|---|
 | Feather + Bluetooth + battery (unused) | Wired only, USB-C native |
 | USB-A→C panel-mount dongle | USB-C port on the controller, behind a case-wall pocket |
-| 3 PCBs + ribbon cables (left, right, center w/ MCP23017) | 2 PCBs, one per half |
+| 3 PCBs + ribbon cables (left, right, center w/ MCP23017) | 3 PCBs: left, right main, right nav (short link across the fold) |
 | ~35 lb solid CNC block, chopped from a 120 mm sweep | Three thin-wall shells |
-| 20 mm plate padding + 15 mm case margin per side | 9 mm wall from the key cells |
+| 20 mm plate padding + 15 mm case margin per side | 11 mm wall from the key cells; 6.5 mm plate frame |
+| Halves 79 mm apart at the inner back keys | 17.1 mm apart (split angle unchanged) |
 | Tall feet (20 mm) | Low-profile or no feet |
 | Eagle | KiCad |
 | CadQuery | build123d (STEP export for CNC) |
@@ -45,18 +49,45 @@ that's "perfect", so B copies it exactly. See `case/nek/frames.py` and `case/scr
 
 ### Halves
 - Each half is its own CNC unibody: a thin-wall shell with a gasket-mounted plate and an acrylic bottom.
-- The desk plane is set by the stack under the lowest plate corner (the right half's outer back corner):
-  `below_plate` (9.6 mm: switch, PCB, solder) + 3 mm acrylic. That is 5 mm higher than Type A's floor,
-  so B is 5 mm thinner everywhere. Refine `below_plate` once the PCB stack is known.
-- **Height is mostly geometry, not material.** With ~12° of tent and ~10° of negative slope, the plates
-  rise ~66 mm from the right outer back corner to the inner front corners. The wrist rest continues the
-  slope, so the centre front is the highest point (~113 mm, vs ~112 mm on Type A). The remaining knobs:
-  `top_skin` (10 mm keycap recess), `below_plate`, `wrist_depth`, or giving the wrist rest a
-  lower/flatter top (it's a separate piece now, so it doesn't have to continue the key planes).
-- **Spine joint:** it isn't on the centreline. It sits 17 mm inside the right half's inner key edge, a
-  position chosen so both halves fit the X1C (left 7.8 mm spare, right 5.5 mm). The left half carries
-  the whole spine. The mating faces need locating pins (dowels) as well as magnets, so the angle can't
-  shift or drift under typing loads.
+- **Closer together.** Each half slides straight inward (world x) without changing its angles, until
+  the thinnest wall at the left/right joint is `joint_wall` (2 mm, beside the bottom-panel recess; 4 mm
+  above it). The inner back keys go from 79 mm apart to 17.1 mm. The halves still splay at Type A's
+  angle, so they're 67.9 mm apart at the front row, and the centre wedge is what's left of the gap. The
+  joint sits ~7 mm inside the right half's inner keys. The left half carries the wedge.
+- **Nav block folded level.** The media, ins/home/pgup, del/end/pgdn and arrow keys (KLE x ≥ 8.75u)
+  are a separate section with their own plate, PCB and gasket. It's hinged in the 0.25u gap and rotated
+  about the column direction so its rows are level (`nav_tent = 0`). It keeps the 9.8° slope. The
+  right half's lowest plate corner was the nav block's outer back corner, so leveling it raises the desk
+  plane 13.5 mm and lowers the whole keyboard by that much.
+- The desk plane is set by the stack under the lowest plate corner (now the right main keys' outer back
+  corner, at the fold): `below_plate` (9.6 mm: switch, PCB, solder) + 3 mm acrylic. Refine
+  `below_plate` once the PCB stack is known.
+
+| | Type A gap, nav tented | gap closed, nav tented | **gap closed, nav level** |
+|---|---|---|---|
+| Tallest point (wrist, centre front) | 115.1 mm | 115.1 mm | **101.5 mm** |
+| Right outer-back edge | 20.5 mm | 20.5 mm | **21.7 mm** |
+| Left outer-back edge | 38.7 mm | 38.7 mm | **25.0 mm** |
+| Overall width | 501.9 mm | 440.0 mm | **441.0 mm** |
+| Inner keys apart, back / front row | 78.9 / 129.7 mm | 17.1 / 67.9 mm | **17.1 / 67.9 mm** |
+| Aluminum (pocketed) | 3.33 kg | 2.69 kg | **2.49 kg** |
+
+- **Height is still mostly geometry.** ~12° of tent and ~10° of negative slope make the plates rise
+  ~54 mm from the fold to the inner front keys, and the wrist rest continues the slope (it must keep
+  the key angles). The remaining knobs: `top_skin` (10 mm keycap recess), `below_plate` and
+  `wrist_depth`.
+- **Plates** are a narrow frame (`case/out/plates/*.dxf`, 1.5 mm 304 stainless): Type A's exact
+  switch/stab cutouts (MX with opening notches), a 6.5 mm frame on the back, front and outer edges with
+  M2 screws at ≤ 60 mm, 2.5 mm on the spine edge (no screws, so the halves can sit close), and ~2.1 mm
+  each side of the fold. Corners are rounded to match the cavity. The screws go up into blind tapped
+  holes (M2, 6 mm) in the 10 mm top skin, ~1.7 mm from the keycap openings. Prints use M2
+  thread-forming screws.
+- **At the fold** the skin between the main and nav keycap openings is a 2.7 mm strip. Both openings'
+  fold-side walls lean at the bisector of the two plates (~6° off each), so the strip keeps its width to
+  the top surface and the keycaps still clear by ≥ 0.5 mm.
+- **Spine joint:** mating faces need locating pins (dowels) as well as magnets, so the angle can't
+  shift or drift under typing loads. The joint wall is only 2–4 mm at the back, but the left half's side
+  thickens toward the front (the wedge), which is where magnets and pogo pins should go.
 
 ### Wrist rest
 - Aluminum: **one piece** (planned). The model also supports a **two-piece** variant (left/right, split
@@ -108,20 +139,19 @@ Current build (`cd case && uv run python build.py`), printed bottom-down at the 
 
 | Part | Footprint × height | Spare to usable bed (250 mm) |
 |---|---|---|
-| Left half (incl. spine) | 242.0 × 203.3 × 99.8 mm | 7.8 mm |
-| Right half | 244.3 × 144.0 × 95.6 mm | 5.5 mm |
-| Wrist rest, left | 229.3 × 230.0 × 113.8 mm | 19.8 mm |
-| Wrist rest, right | 213.6 × 214.0 × 110.6 mm | 35.8 mm |
+| Left half (incl. centre wedge) | 194.4 × 194.2 × 86.9 mm | 55.4 mm |
+| Right half (main + nav) | 238.1 × 148.5 × 81.6 mm | 11.7 mm |
+| Wrist rest, left | 190.9 × 190.4 × 101.5 mm | 58.9 mm |
+| Wrist rest, right | 207.2 × 207.0 × 96.2 mm | 42.6 mm |
 
-My first estimate here forgot the spine: the gap between the halves' inner keys is fixed at ~70 mm,
-so a centreline joint makes the right half ~268 mm wide. Moving the joint toward the right keys fixed it.
+The right half is the tight one: its keys are 224 mm wide.
 
-The aluminum set is about 3.5 kg (7.6 lb) across three pieces, pocketed from below, vs ~12.5 kg for
+The aluminum set is about 2.5 kg (5.5 lb) across three pieces, pocketed from below, vs ~12.5 kg for
 Type A's body.
 
 Rules:
-- **Hard size limit:** both halves are within ~5–8 mm of the usable bed, so wall width and anything added
-  to the outer walls are limited by the printer, not only by looks. `build.py` checks every printed part
+- **Hard size limit:** the right half is within ~12 mm of the usable bed, so its wall width and anything
+  added to its outer walls are limited by the printer, not only by looks. `build.py` checks every printed part
   (rotating to find the best fit) and fails if one doesn't fit.
 - **Wrist rest:** prints use the two-piece variant (see Wrist rest above). Each piece must fit the bed.
 - **One geometry for both:** printed and machined parts come from the same model. Printer-specific
