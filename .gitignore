@@ -56,3 +56,4 @@ fabric.properties
 .docker-build
 
 **/*.log
+.omc/
