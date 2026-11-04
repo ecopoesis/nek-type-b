@@ -57,3 +57,8 @@ fabric.properties
 
 **/*.log
 .omc/
+
+# Type B case build
+case/out/
+case/.venv/
+__pycache__/

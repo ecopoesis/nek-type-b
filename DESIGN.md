@@ -5,19 +5,22 @@ to be simpler, smaller, thinner and cheaper to machine.
 
 ## Fixed constraints (carried from Type A)
 
-These are not up for change. Values come from `body/body.py` and the
-`*.kbd.json` layouts.
+These are not up for change. Key positions and angles are **measured from Type A's machined STEP**
+(`body/target/body.step`), not taken from `body/body.py`'s nominal parameters. CadQuery's rotation
+composition and its non-orthogonal `CoordPlane` made the real angles differ from the script's
+10° / 25° / 10°, and the halves are not exact mirror images. The keyboard that was built is the one
+that's "perfect", so B copies it exactly. See `case/nek/frames.py` and `case/scripts/fit_type_a.py`.
 
-| Parameter | Value | Notes |
-|---|---|---|
-| Layout | `left.kbd.json`, `right.kbd.json` | unchanged |
-| Tent | 10° | outer edges raised |
-| Split | 25° | total angle between halves (±12.5° about Z) |
-| Slope | 10° **negative** | front/wrist edge is higher than the back |
-| Rotation order | tent (Y) + split (Z), then slope (X) | about the pivot where the halves meet at the back |
-| Stack | PCB / 1.5 mm 304 SS plate / 0.031" Buna-N gasket / unibody case | works well, keep |
-| Bottom | 0.118" clear acrylic access panel | keep |
-| Firmware | QMK | keep |
+| Parameter | Right | Left | Notes |
+|---|---|---|---|
+| Layout | `right.kbd.json` | `left.kbd.json` | unchanged |
+| Tent (drop along the rows) | 11.89° | 12.06° | script said 10° |
+| Slope (rise toward the user) | 9.82° | 9.78° | **negative** slope: wrist edge is higher than the back |
+| Row yaw in plan view | 9.91° | 10.89° | script said ±12.5° |
+| Centre top | slope-only plane | | meets each half's plane 35 mm inside the inner keys |
+| Stack | PCB / 1.5 mm 304 SS plate / 0.031" Buna-N gasket / unibody case | | works well, keep |
+| Bottom | 0.118" clear acrylic access panel | | keep |
+| Firmware | QMK | | keep |
 
 ## Goals vs Type A
 
@@ -27,7 +30,7 @@ These are not up for change. Values come from `body/body.py` and the
 | USB-A→C panel-mount dongle | USB-C port on the controller, behind a case-wall pocket |
 | 3 PCBs + ribbon cables (left, right, center w/ MCP23017) | 2 PCBs, one per half |
 | ~35 lb solid CNC block, chopped from a 120 mm sweep | Three thin-wall shells |
-| 20 mm plate padding + 15 mm case margin per side | ~6–8 mm wall from keycap edge |
+| 20 mm plate padding + 15 mm case margin per side | 9 mm wall from the key cells |
 | Tall feet (20 mm) | Low-profile or no feet |
 | Eagle | KiCad |
 | CadQuery | build123d (STEP export for CNC) |
@@ -42,12 +45,18 @@ These are not up for change. Values come from `body/body.py` and the
 
 ### Halves
 - Each half is its own CNC unibody: a thin-wall shell with a gasket-mounted plate and an acrylic bottom.
-- Since the slope is negative, removing the wrist rest from each half shortens the tilted plane and lowers
-  the tall front edge by about `wrist × sin(10°)` ≈ 11 mm.
-- The low (back) edge should be as thin as the stack allows. Target: switch + PCB + controller clearance
-  + floor + acrylic. Measure this precisely once the PCB stack is known.
-- **Spine joint:** the halves meet at the fixed 25°. The mating faces need locating pins (dowels) as well
-  as magnets, so the angle can't shift or drift under typing loads.
+- The desk plane is set by the stack under the lowest plate corner (the right half's outer back corner):
+  `below_plate` (9.6 mm: switch, PCB, solder) + 3 mm acrylic. That is 5 mm higher than Type A's floor,
+  so B is 5 mm thinner everywhere. Refine `below_plate` once the PCB stack is known.
+- **Height is mostly geometry, not material.** With ~12° of tent and ~10° of negative slope, the plates
+  rise ~66 mm from the right outer back corner to the inner front corners. The wrist rest continues the
+  slope, so the centre front is the highest point (~113 mm, vs ~112 mm on Type A). The remaining knobs:
+  `top_skin` (10 mm keycap recess), `below_plate`, `wrist_depth`, or giving the wrist rest a
+  lower/flatter top (it's a separate piece now, so it doesn't have to continue the key planes).
+- **Spine joint:** it isn't on the centreline. It sits 17 mm inside the right half's inner key edge, a
+  position chosen so both halves fit the X1C (left 7.8 mm spare, right 5.5 mm). The left half carries
+  the whole spine. The mating faces need locating pins (dowels) as well as magnets, so the angle can't
+  shift or drift under typing loads.
 
 ### Wrist rest
 - Aluminum: **one piece** (planned). The model also supports a **two-piece** variant (left/right, split
@@ -55,8 +64,9 @@ These are not up for change. Values come from `body/body.py` and the
   the aluminum can use either. The split is a build-time option, not a separate model.
 - Pocket for a ~0.5" (12.7 mm) neoprene insert. In the two-piece variant, the neoprene is either one
   piece bridging the seam or two pieces (decide after a test print).
-- Its top surface must line up with the keyboard halves' front edge (match the tent and slope there, or
-  use a deliberate small step).
+- Its top surface continues Type A's three top planes, so it lines up with the halves exactly.
+- The halves/wrist-rest boundary is a vertical cut 9 mm in front of each side's key area, which makes a
+  chevron.
 - Magnets to both halves. No electronics.
 
 ## Electronics
@@ -94,17 +104,25 @@ large metal case, so:
 Every part must be printable on an X1C (256 × 256 × 256 mm build volume) so the full keyboard can be
 prototyped and used in plastic before it is machined in aluminum.
 
-| Part | Key area | Est. outline (7 mm walls) | Status |
-|---|---|---|---|
-| Right half | 223.8 × 119 mm (11.75u × 6.25u) | ~238 × 133 mm | fits, ~18 mm spare in X |
-| Left half | 133.4 × 119 mm (7u × 6.25u) | ~147 × 133 mm | fits |
-| Wrist rest | spans both halves | ~400+ mm | **must split** |
+Current build (`cd case && uv run python build.py`), printed bottom-down at the best rotation:
+
+| Part | Footprint × height | Spare to usable bed (250 mm) |
+|---|---|---|
+| Left half (incl. spine) | 242.0 × 203.3 × 99.8 mm | 7.8 mm |
+| Right half | 244.3 × 144.0 × 95.6 mm | 5.5 mm |
+| Wrist rest, left | 229.3 × 230.0 × 113.8 mm | 19.8 mm |
+| Wrist rest, right | 213.6 × 214.0 × 110.6 mm | 35.8 mm |
+
+My first estimate here forgot the spine: the gap between the halves' inner keys is fixed at ~70 mm,
+so a centreline joint makes the right half ~268 mm wide. Moving the joint toward the right keys fixed it.
+
+The aluminum set is about 3.5 kg (7.6 lb) across three pieces, pocketed from below, vs ~12.5 kg for
+Type A's body.
 
 Rules:
-- **Hard size limit:** the right half's footprint, including spine-joint features and magnet bosses, must
-  stay ≤ 250 mm in the bed plane. That leaves about 6 mm per side for walls and fillets beyond the
-  current estimate, so wall width is constrained by the printer, not only by looks. The build123d code
-  should assert each part's bounding box against the bed size so violations fail the build.
+- **Hard size limit:** both halves are within ~5–8 mm of the usable bed, so wall width and anything added
+  to the outer walls are limited by the printer, not only by looks. `build.py` checks every printed part
+  (rotating to find the best fit) and fails if one doesn't fit.
 - **Wrist rest:** prints use the two-piece variant (see Wrist rest above). Each piece must fit the bed.
 - **One geometry for both:** printed and machined parts come from the same model. Printer-specific
   differences are build-time parameters:
@@ -119,9 +137,8 @@ Rules:
 
 ## Toolchain
 
-- **CAD:** build123d (Python). Produces STEP for CNC and STL for test prints. Port the geometry
-  (rotations, plate outlines from the swillkb SVG/DXF) from `body/body.py`, but not its approach of
-  sweeping and chopping a block.
+- **CAD:** build123d (Python) in `case/`. Produces STEP for CNC and STL for test prints. Key positions
+  come from the `kbd.json` layouts directly (no swillkb step). See `case/README.md`.
 - **PCB:** KiCad. Redraw rather than convert the Eagle files, since the circuit changes anyway (no
   MCP23017, no Feather). Consider generating the matrix placement from the `kbd.json` files.
 - **Firmware:** QMK, a new keyboard definition for the RP2040 split.
