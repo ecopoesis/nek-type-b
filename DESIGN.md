@@ -33,8 +33,8 @@ half's media/nav/arrow block is folded level.
 | USB-A→C panel-mount dongle | USB-C port on the controller, behind a case-wall pocket |
 | 3 PCBs + ribbon cables (left, right, center w/ MCP23017) | 3 PCBs: left, right main, right nav (short link across the fold) |
 | ~35 lb solid CNC block, chopped from a 120 mm sweep | Three thin-wall shells |
-| 20 mm plate padding + 15 mm case margin per side | 11 mm wall from the key cells; 6.5 mm plate frame |
-| Halves 79 mm apart at the inner back keys | 17.1 mm apart (split angle unchanged) |
+| 20 mm plate padding + 15 mm case margin per side | 7 mm wall from the key cells (11 mm at the front); 2.5 mm plate frame |
+| Halves 79 mm apart at the inner back keys | 15.4 mm apart (split angle unchanged) |
 | Tall feet (20 mm) | Low-profile or no feet |
 | Eagle | KiCad |
 | CadQuery | build123d (STEP export for CNC) |
@@ -51,37 +51,60 @@ half's media/nav/arrow block is folded level.
 - Each half is its own CNC unibody: a thin-wall shell with a gasket-mounted plate and an acrylic bottom.
 - **Closer together.** Each half slides straight inward (world x) without changing its angles, until
   the thinnest wall at the left/right joint is `joint_wall` (2 mm, beside the bottom-panel recess; 4 mm
-  above it). The inner back keys go from 79 mm apart to 17.1 mm. The halves still splay at Type A's
-  angle, so they're 67.9 mm apart at the front row, and the centre wedge is what's left of the gap. The
+  above it). The inner back keys go from 79 mm apart to 15.4 mm. The halves still splay at Type A's
+  angle, so they're 66.2 mm apart at the front row, and the centre wedge is what's left of the gap. The
   joint sits ~7 mm inside the right half's inner keys. The left half carries the wedge.
 - **Nav block folded level.** The media, ins/home/pgup, del/end/pgdn and arrow keys (KLE x ≥ 8.75u)
   are a separate section with their own plate, PCB and gasket. It's hinged in the 0.25u gap and rotated
   about the column direction so its rows are level (`nav_tent = 0`). It keeps the 9.8° slope. The
   right half's lowest plate corner was the nav block's outer back corner, so leveling it raises the desk
   plane 13.5 mm and lowers the whole keyboard by that much.
-- The desk plane is set by the stack under the lowest plate corner (now the right main keys' outer back
-  corner, at the fold): `below_plate` (9.6 mm: switch, PCB, solder) + 3 mm acrylic. Refine
-  `below_plate` once the PCB stack is known.
+- The desk plane is set by the stack under the lowest PCB corner (the right main keys' back corner at
+  the fold). The stack is the minimum for MX, 9.7 mm from plate top to desk:
 
-| | Type A gap, nav tented | gap closed, nav tented | **gap closed, nav level** |
-|---|---|---|---|
-| Tallest point (wrist, centre front) | 115.1 mm | 115.1 mm | **101.5 mm** |
-| Right outer-back edge | 20.5 mm | 20.5 mm | **21.7 mm** |
-| Left outer-back edge | 38.7 mm | 38.7 mm | **25.0 mm** |
-| Overall width | 501.9 mm | 440.0 mm | **441.0 mm** |
-| Inner keys apart, back / front row | 78.9 / 129.7 mm | 17.1 / 67.9 mm | **17.1 / 67.9 mm** |
-| Aluminum (pocketed) | 3.33 kg | 2.69 kg | **2.49 kg** |
+  | Layer | mm | Requirement |
+  |---|---|---|
+  | Plate top → PCB top | 5.0 | MX spec (`switch_plate_to_pcb`) |
+  | PCB | 1.2 | order 1.2 mm boards |
+  | Below the PCB | 1.0 | solder switches directly (no hot-swap sockets), flush-trim pins, diodes and other parts on the **top** side |
+  | Clearance | 0.5 | |
+  | Bottom panel | 2.0 | 2 mm clear acrylic |
+
+  The controller, its socket and USB-C are much taller, so they must sit where the plates are high
+  (toward the spine and the front), not near the back corner at the fold.
+- **Choc v2** is being evaluated. It is plate mounted like MX, so only `switch_plate_to_pcb` (and
+  possibly `plate_thickness`) change. Measure the real switches before setting them.
+
+| | Type A gap, nav tented, 12.6 mm stack | **now** |
+|---|---|---|
+| Tallest point (wrist, centre front) | 115.1 mm | **97.6 mm** |
+| Right outer-back edge | 20.5 mm | **18.5 mm** |
+| Left outer-back edge | 38.7 mm | **22.7 mm** |
+| Overall width | 501.9 mm | **431.6 mm** |
+| Inner keys apart, back / front row | 78.9 / 129.7 mm | **15.4 / 66.2 mm** |
+| Aluminum (pocketed) | 3.33 kg | **2.29 kg** |
+
+Where the 17.5 mm of height came from: nav block folded level 13.5, thinner stack 2.9, PCB (not
+plate) corner setting the floor ~1.
 
 - **Height is still mostly geometry.** ~12° of tent and ~10° of negative slope make the plates rise
   ~54 mm from the fold to the inner front keys, and the wrist rest continues the slope (it must keep
-  the key angles). The remaining knobs: `top_skin` (10 mm keycap recess), `below_plate` and
-  `wrist_depth`.
-- **Plates** are a narrow frame (`case/out/plates/*.dxf`, 1.5 mm 304 stainless): Type A's exact
-  switch/stab cutouts (MX with opening notches), a 6.5 mm frame on the back, front and outer edges with
-  M2 screws at ≤ 60 mm, 2.5 mm on the spine edge (no screws, so the halves can sit close), and ~2.1 mm
-  each side of the fold. Corners are rounded to match the cavity. The screws go up into blind tapped
-  holes (M2, 6 mm) in the 10 mm top skin, ~1.7 mm from the keycap openings. Prints use M2
-  thread-forming screws.
+  the key angles). The remaining knobs: `top_skin` (10 mm keycap recess), the switch (Choc v2), and
+  `wrist_depth`. The side and back walls barely matter for height now: the floor is set by the PCB,
+  which only reaches 1 mm past the keys.
+- **Plates** are a narrow frame (`case/out/plates/*.dxf`, 1.5 mm 304 stainless) around Type A's exact
+  switch/stab cutouts (MX with opening notches). Screws are M2, going up into blind 6 mm tapped holes
+  in the 10 mm top skin (prints: M2 thread-forming), at least 1.2 mm from the keycap openings:
+  - **In the key field**, where the skin is wide enough (`IN_FIELD_SCREWS`): left of Esc, in the 0.5u
+    Esc–F1 gap, and right of F4 on the left; at the spine end of the F-row on the right main block;
+    either side of the up arrow on the nav block. The 0.25u gaps (e.g. F-row vs number row) leave a
+    2.8 mm strip, too thin for an M2 tap.
+  - **Front frame** (6.5 mm) below the bottom row, screws ≤ 60 mm apart.
+  - **Back, outer and spine edges**: 2.5 mm frame, no screws. The fold side is ~2.1 mm.
+  - The right main plate has only one back screw (at the spine end); its F9–F12 corner is held by the
+    front row and the plate's stiffness (1.5 mm steel deflects ~0.03 mm over these spans under a key
+    press).
+  Corners are rounded to match the cavity.
 - **At the fold** the skin between the main and nav keycap openings is a 2.7 mm strip. Both openings'
   fold-side walls lean at the bisector of the two plates (~6° off each), so the strip keeps its width to
   the top surface and the keycaps still clear by ≥ 0.5 mm.
@@ -109,8 +132,9 @@ half's media/nav/arrow block is folded level.
   controller only on the USB half and drive the other half's matrix through the joint (needs more pins
   across the joint). The default is a controller per half: it's the standard QMK pattern and needs the
   fewest connections.
-- Socket height adds to case thickness. Evaluate low-profile options (Mill-Max low-profile pins and
-  sockets) against hotswap pin headers.
+- The socketed controller doesn't set the case thickness as long as it sits where the plates are high
+  (toward the spine and front, 20–50 mm above the floor). Low-profile sockets (Mill-Max) still help it
+  fit further back.
 
 ### Inter-half link
 - Pogo pins at the spine joint: VCC, GND, plus 1–2 data lines (QMK serial half- or full-duplex).
@@ -139,18 +163,18 @@ Current build (`cd case && uv run python build.py`), printed bottom-down at the 
 
 | Part | Footprint × height | Spare to usable bed (250 mm) |
 |---|---|---|
-| Left half (incl. centre wedge) | 194.4 × 194.2 × 86.9 mm | 55.4 mm |
-| Right half (main + nav) | 238.1 × 148.5 × 81.6 mm | 11.7 mm |
-| Wrist rest, left | 190.9 × 190.4 × 101.5 mm | 58.9 mm |
-| Wrist rest, right | 207.2 × 207.0 × 96.2 mm | 42.6 mm |
+| Left half (incl. centre wedge) | 189.1 × 188.7 × 83.0 mm | 60.7 mm |
+| Right half (main + nav) | 234.1 × 144.4 × 77.7 mm | 15.7 mm |
+| Wrist rest, left | 186.6 × 186.1 × 97.6 mm | 63.2 mm |
+| Wrist rest, right | 204.1 × 204.4 × 92.4 mm | 45.4 mm |
 
 The right half is the tight one: its keys are 224 mm wide.
 
-The aluminum set is about 2.5 kg (5.5 lb) across three pieces, pocketed from below, vs ~12.5 kg for
+The aluminum set is about 2.3 kg (5.0 lb) across three pieces, pocketed from below, vs ~12.5 kg for
 Type A's body.
 
 Rules:
-- **Hard size limit:** the right half is within ~12 mm of the usable bed, so its wall width and anything
+- **Hard size limit:** the right half is within ~16 mm of the usable bed, so its wall width and anything
   added to its outer walls are limited by the printer, not only by looks. `build.py` checks every printed part
   (rotating to find the best fit) and fails if one doesn't fit.
 - **Wrist rest:** prints use the two-piece variant (see Wrist rest above). Each piece must fit the bed.

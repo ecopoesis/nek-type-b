@@ -15,11 +15,14 @@ class Params:
     close_gap: bool = True  # slide the halves together until the joint walls reach joint_wall
 
     # --- Plate (steel), screwed up into the case's top skin ---
-    plate_margin: float = 6.5  # frame past the key cells on the back, front and outer edges (holds screws)
-    plate_inner_margin: float = 2.5  # frame on the spine edge (no screws, keeps the halves close)
+    # Screws sit in skin islands inside the key field (around the F-row, beside the up arrow; see
+    # case.IN_FIELD_SCREWS) and along a front frame below the bottom row. The back, outer and spine
+    # edges have no screws, so their frame is minimal.
+    plate_margin: float = 2.5  # frame past the key cells on the back, outer and spine edges
+    plate_margin_front: float = 6.5  # front frame, holds a row of screws
     plate_hinge_clearance: float = 0.5  # gap between the main and nav plates at the fold
     plate_clearance: float = 0.5  # cavity grows past the plate
-    screw_inset: float = 3.5  # screw centre, from the key-cell edge (keeps the tap ~1.7 mm from the opening)
+    screw_inset: float = 3.5  # front screw centres, below the key cells (keeps the tap ~1.7 mm from the opening)
     screw_spacing: float = 60.0  # maximum distance between plate screws along an edge
     plate_hole_d: float = 2.4  # M2 clearance hole in the plate
     tap_hole_d: float = 1.6  # M2 tap drill in aluminum
@@ -31,8 +34,15 @@ class Params:
     top_skin: float = 10.0  # plate top -> case top surface (keycap recess depth, Type A value)
     keycap_clearance: float = 1.0  # keycap opening grows past the 19.05 mm cells (Type A value)
     tool_r: float = 1.5  # minimum inside-corner radius (3 mm end mill)
-    below_plate: float = 9.6  # plate top -> top of bottom panel, at the plate's lowest corner
-    panel_thickness: float = 3.0  # 0.118" acrylic
+    # Stack under the plate (sets the desk plane at the lowest PCB corner). Choc v2 is also plate
+    # mounted, so only switch_plate_to_pcb (and plate_thickness) should change if we switch.
+    switch_plate_to_pcb: float = 5.0  # MX: plate top -> PCB top
+    plate_thickness: float = 1.5  # 304 stainless
+    pcb_thickness: float = 1.2  # thinner than the usual 1.6
+    under_pcb: float = 1.0  # flush-trimmed pins + solder; no hot-swap sockets; diodes on top
+    panel_clearance: float = 0.5
+    pcb_margin: float = 1.0  # PCB extends past the key cells (less at the nav fold)
+    panel_thickness: float = 2.0  # acrylic
     panel_lip: float = 2.0  # bottom panel overlaps the cavity by this much
     corner_r: float = 5.0  # outer back corners
     cavity_corner_r: float = 3.0  # vertical corners of the plate cavity; plate corners match (minus clearance)
@@ -59,8 +69,18 @@ class Params:
 
     @property
     def wall(self) -> float:
-        """Key-cell edge -> outer case surface on the back, front and outer sides."""
+        """Key-cell edge -> outer case surface on the back and outer sides."""
         return self.plate_margin + self.plate_clearance + self.side_wall
+
+    @property
+    def wall_front(self) -> float:
+        """Key-cell edge -> front of the half (where the wrist rest starts)."""
+        return self.plate_margin_front + self.plate_clearance + self.side_wall
+
+    @property
+    def below_plate(self) -> float:
+        """Plate top -> top of the bottom panel, under the PCB."""
+        return self.switch_plate_to_pcb + self.pcb_thickness + self.under_pcb + self.panel_clearance
 
     @property
     def shell(self) -> float:

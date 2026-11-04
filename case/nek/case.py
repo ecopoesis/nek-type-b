@@ -51,6 +51,15 @@ from .params import Params
 BIG = 1000.0
 OVERLAP = 10.0  # prisms overlap their neighbours by this much before being clipped
 
+# Plate screws inside the key field (KLE mm), in skin islands wide enough for an M2 tap.
+# The 0.25u gaps (e.g. F-row vs number row) leave only a 2.8 mm strip, too thin, so these are the
+# 0.5u gap and the ends of the F-row, and the empty space either side of the up arrow.
+IN_FIELD_SCREWS = {
+    "left": [(0.25 * U, 0.5 * U), (2.5 * U, 0.5 * U), (7 * U - 0.5, 0.5 * U)],
+    "right": [(0.3, 0.5 * U)],
+    "nav": [(9.25 * U, 4.0 * U), (11.25 * U, 4.0 * U)],
+}
+
 
 @dataclass
 class Section:
@@ -66,10 +75,8 @@ class Section:
 
 
 def _margin(kind: str, p: Params) -> float:
-    if kind == "outer":
+    if kind in ("outer", "spine"):
         return p.plate_margin
-    if kind == "spine":
-        return p.plate_inner_margin
     return (0.25 * U - p.plate_hinge_clearance) / 2  # half the 0.25u gap, less clearance
 
 
@@ -78,8 +85,13 @@ def plate_rect(sec: Section, p: Params, extra: float = 0.0) -> tuple[float, floa
         sec.u0 - _margin(sec.edge0, p) - extra,
         -p.plate_margin - extra,
         sec.u1 + _margin(sec.edge1, p) + extra,
-        sec.depth + p.plate_margin + extra,
+        sec.depth + p.plate_margin_front + extra,
     )
+
+
+def pcb_rect(sec: Section, p: Params) -> tuple[float, float, float, float]:
+    m0, m1 = (min(p.pcb_margin, _margin(e, p)) for e in (sec.edge0, sec.edge1))
+    return (sec.u0 - m0, -p.pcb_margin, sec.u1 + m1, sec.depth + p.pcb_margin)
 
 
 def _raw_sections(p: Params, frames: dict[str, Frame]) -> list[Section]:
@@ -199,7 +211,7 @@ def _joint(right: Section, p: Params) -> tuple[np.ndarray, np.ndarray]:
     n /= np.linalg.norm(n)
     n *= np.sign(n @ f.ex)
     # joint_wall is measured horizontally (the joint face is vertical); the plate frame is tilted
-    cavity_u = right.u0 - p.plate_inner_margin - p.plate_clearance
+    cavity_u = right.u0 - p.plate_margin - p.plate_clearance
     u = cavity_u - (p.joint_wall + p.panel_lip) / (n @ f.ex)  # thinnest point is beside the panel recess
     return f.point(u, 0), n
 
@@ -212,7 +224,7 @@ def joint_plane(s: dict[str, Section], p: Params) -> Plane:
 def front_cut_plane(sec: Section, p: Params) -> Plane:
     """Half / wrist-rest boundary for one half. Normal points to the back (toward the half)."""
     f = sec.frame
-    return vertical_plane(f.point(0, sec.depth + p.wall), f.ex, -f.ey)
+    return vertical_plane(f.point(0, sec.depth + p.wall_front), f.ex, -f.ey)
 
 
 def top_plane(sec: Section, p: Params) -> Plane:
@@ -243,12 +255,15 @@ def keep_below(solid, pl: Plane):
 
 
 def floor_z(s: dict[str, Section], p: Params) -> float:
-    """Desk height in Type A's frame: low enough for the stack under the lowest plate corner."""
+    """Desk height in Type A's frame: room for the switch/PCB stack under the lowest PCB corner, and
+    for the plate itself under the lowest plate corner."""
     zs = []
     for sec in s.values():
+        x0, y0, x1, y1 = pcb_rect(sec, p)
+        zs += [sec.frame.point(x, y)[2] - p.below_plate for x in (x0, x1) for y in (y0, y1)]
         x0, y0, x1, y1 = plate_rect(sec, p)
-        zs += [sec.frame.point(x, y)[2] for x in (x0, x1) for y in (y0, y1)]
-    return min(zs) - p.below_plate - p.panel_thickness
+        zs += [sec.frame.point(x, y)[2] - p.plate_thickness - p.panel_clearance for x in (x0, x1) for y in (y0, y1)]
+    return min(zs) - p.panel_thickness
 
 
 def footprint(points: list[np.ndarray], z: float) -> Face:
@@ -327,15 +342,12 @@ def _spaced(a: float, b: float, spacing: float) -> list[float]:
 
 
 def screw_points(sec: Section, p: Params) -> list[tuple[float, float]]:
-    """Plate screw centres in KLE mm: along the back and front frames, and down the outer edge."""
-    i = p.screw_inset
-    ua = sec.u0 - i if sec.edge0 == "outer" else sec.u0 + i
-    ub = sec.u1 + i if sec.edge1 == "outer" else sec.u1 - i
-    pts = [(u, v) for v in (-i, sec.depth + i) for u in _spaced(ua, ub, p.screw_spacing)]
-    for kind, u in ((sec.edge0, ua), (sec.edge1, ub)):
-        if kind == "outer":
-            pts += [(u, v) for v in _spaced(-i, sec.depth + i, p.screw_spacing)[1:-1]]
-    return pts
+    """Plate screw centres in KLE mm: a row along the front frame, plus the in-field screws."""
+    front = [(u, sec.depth + p.screw_inset) for u in _spaced(sec.u0 + 2, sec.u1 - 2, p.screw_spacing)]
+    extra = IN_FIELD_SCREWS[sec.name]
+    if sec.name == "right" and sec.edge1 == "outer":  # nav block not split off: its screws are ours
+        extra = extra + IN_FIELD_SCREWS["nav"]
+    return front + list(extra)
 
 
 def opening_direction(s: dict[str, Section], sec: Section) -> np.ndarray:
@@ -393,7 +405,7 @@ def hollow_wrist(part: Part, s: dict[str, Section], p: Params, z_floor: float) -
 
 def neoprene_pocket(sec: Section, p: Params) -> Part:
     """Pad in front of a section's keys (the main keys only on the right)."""
-    back = sec.depth + p.wall + p.pad_rim
+    back = sec.depth + p.wall_front + p.pad_rim
     front = sec.depth + p.wrist_depth - p.pad_rim
     pad = rounded(kle_rect(sec.u0, back, sec.u1, front), p.pad_corner_r, lambda v: True)
     pad = pad & offset(outline(sec, p), -p.pad_rim, kind=Kind.ARC)

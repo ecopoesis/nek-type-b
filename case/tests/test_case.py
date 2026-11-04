@@ -8,7 +8,7 @@ import pytest
 from build123d import Vector
 
 from nek.case import build as build_case
-from nek.case import floor_z, joint_plane, plate_rect, screw_points, sections
+from nek.case import IN_FIELD_SCREWS, floor_z, joint_plane, keycap_opening, plate_rect, screw_points, sections
 from nek.frames import TYPE_A
 from nek.params import ALUMINUM, PRINT, VARIANTS
 from nek.plates import plate, section_cutouts
@@ -111,7 +111,7 @@ def _walk(half, sec, p, start, direction):
     lo, hi = p.panel_thickness / 2, p.panel_thickness + 1.0
     step = 0.1
     prof = []
-    for i in range(int((p.wall + 6) / step)):
+    for i in range(int((p.wall_front + 6) / step)):
         x, y = np.array(start) + i * step * np.array(direction)
         q = sec.frame.point(x, y)
         prof.append((half.is_inside(Vector(q[0], q[1], lo)), half.is_inside(Vector(q[0], q[1], hi))))
@@ -134,7 +134,7 @@ def test_walls_and_panel_recess(variant, name, wall):
         ("outer", "left"): ((sec.u0 - p.wall - 3, d / 2), (1, 0)),
         ("outer", "nav"): ((sec.u1 + p.wall + 3, d / 2), (-1, 0)),
         ("back", name): ((u_mid, -p.wall - 3), (0, 1)),
-        ("front", name): ((u_mid, d + p.wall + 3), (0, -1)),
+        ("front", name): ((u_mid, d + p.wall_front + 3), (0, -1)),
     }[(wall, name if wall == "outer" else name)]
     prof, step = _walk(half, sec, p, start, direction)
     states = [s for i, s in enumerate(prof) if i == 0 or s != prof[i - 1]]
@@ -216,7 +216,7 @@ def test_joint_wall(variant):
     o = np.array([j.origin.X, j.origin.Y, j.origin.Z])
     along = np.cross([0, 0, 1.0], n)
     r = s["right"]
-    for v in np.linspace(-p.plate_margin, r.depth + p.plate_margin, 7):  # along the right half's keys
+    for v in np.linspace(-p.plate_margin, r.depth + p.plate_margin_front, 9):  # along the right half's keys
         base = o + along * (along @ (r.frame.point(0, v) - o))
         for z in (p.panel_thickness / 2, p.panel_thickness + 2, 15.0):
             for name, sign in (("left_half", -1), ("right_half", 1)):
@@ -259,3 +259,19 @@ def test_fold_walls_clear_keycaps(name):
             edge = (x1 - inset) if name == "right" else (x0 + inset)
             probe = edge + (0.5 if name == "right" else -0.5)
             assert not half.is_inside(world(sec, probe, cy, z, p)), (k.label, z)
+
+
+@pytest.mark.parametrize("name", ["left", "right", "nav"])
+def test_in_field_screws_have_metal_around_them(name):
+    """In-field screws: >= 1.2 mm of skin around the M2 tap, >= 1.5 mm of steel around the plate hole."""
+    p = ALUMINUM
+    sec = sections(p)[name]
+    opening = keycap_opening(sec, p)
+    x0, y0, x1, y1 = plate_rect(sec, p)
+    assert IN_FIELD_SCREWS[name]
+    for u, v in IN_FIELD_SCREWS[name]:
+        assert opening.distance_to(Vector(u, -v, 0)) - p.tap_hole_d / 2 >= 1.2, (u, v)
+        hole_r = p.plate_hole_d / 2
+        assert min(u - x0, x1 - u, v - y0, y1 - v) - hole_r >= 1.5, (u, v)
+        for q in section_cutouts(sec):
+            assert np.min(np.hypot(q[:, 0] - u, q[:, 1] - v)) - hole_r >= 1.5, (u, v)
