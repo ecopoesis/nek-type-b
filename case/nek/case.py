@@ -51,12 +51,11 @@ from .params import Params
 BIG = 1000.0
 OVERLAP = 10.0  # prisms overlap their neighbours by this much before being clipped
 
-# Plate screws inside the key field (KLE mm), in skin islands wide enough for an M2 tap.
-# The 0.25u gaps (e.g. F-row vs number row) leave only a 2.8 mm strip, too thin, so these are the
-# 0.5u gap and the ends of the F-row, and the empty space either side of the up arrow.
+# Extra plate screws inside the key field (KLE mm), besides the F-row gap row and the front row:
+# the empty space either side of the up arrow.
 IN_FIELD_SCREWS = {
-    "left": [(0.25 * U, 0.5 * U), (2.5 * U, 0.5 * U), (7 * U - 0.5, 0.5 * U)],
-    "right": [(0.3, 0.5 * U)],
+    "left": [],
+    "right": [],
     "nav": [(9.25 * U, 4.0 * U), (11.25 * U, 4.0 * U)],
 }
 
@@ -73,6 +72,18 @@ class Section:
     edge0: str  # what the u0 edge faces: "outer", "spine" or "hinge"
     edge1: str  # same for the u1 edge
 
+    @property
+    def top(self) -> float:
+        """KLE y of the back edge of the key cells (the F-row sits slightly behind y = 0)."""
+        return min(k.cell_mm[1] for k in self.keys)
+
+    @property
+    def gap_v(self) -> float:
+        """KLE y of the centre of the gap between the F-row and the number row."""
+        frow = [k for k in self.keys if k.cell_mm[1] < self.top + 0.5 * U]
+        rest = [k for k in self.keys if k not in frow]
+        return (max(k.cell_mm[3] for k in frow) + min(k.cell_mm[1] for k in rest)) / 2
+
 
 def _margin(kind: str, p: Params) -> float:
     if kind in ("outer", "spine"):
@@ -83,7 +94,7 @@ def _margin(kind: str, p: Params) -> float:
 def plate_rect(sec: Section, p: Params, extra: float = 0.0) -> tuple[float, float, float, float]:
     return (
         sec.u0 - _margin(sec.edge0, p) - extra,
-        -p.plate_margin - extra,
+        sec.top - p.plate_margin - extra,
         sec.u1 + _margin(sec.edge1, p) + extra,
         sec.depth + p.plate_margin_front + extra,
     )
@@ -91,7 +102,7 @@ def plate_rect(sec: Section, p: Params, extra: float = 0.0) -> tuple[float, floa
 
 def pcb_rect(sec: Section, p: Params) -> tuple[float, float, float, float]:
     m0, m1 = (min(p.pcb_margin, _margin(e, p)) for e in (sec.edge0, sec.edge1))
-    return (sec.u0 - m0, -p.pcb_margin, sec.u1 + m1, sec.depth + p.pcb_margin)
+    return (sec.u0 - m0, sec.top - p.pcb_margin, sec.u1 + m1, sec.depth + p.pcb_margin)
 
 
 def _raw_sections(p: Params, frames: dict[str, Frame]) -> list[Section]:
@@ -184,8 +195,9 @@ def outline(sec: Section, p: Params) -> Sketch:
     a, b = half_extent(sec, p)
     outer = a if sec.half == "left" else b
     front = sec.depth + p.wrist_depth
-    sk = kle_rect(a, -p.wall, b, front)
-    sk = rounded(sk, p.corner_r, lambda v: abs(v.X - outer) < 1e-6 and abs(v.Y - p.wall) < 1e-6)
+    back = sec.top - p.wall
+    sk = kle_rect(a, back, b, front)
+    sk = rounded(sk, p.corner_r, lambda v: abs(v.X - outer) < 1e-6 and abs(v.Y + back) < 1e-6)
     return rounded(sk, p.wrist_corner_r, lambda v: abs(v.X - outer) < 1e-6 and abs(v.Y + front) < 1e-6)
 
 
@@ -281,8 +293,8 @@ def center_region(s: dict[str, Section], p: Params, z_floor: float) -> Part | No
     """Prism between the two halves' pivot lines (where the centre plane is the top)."""
     l, r = s["left"], s["right"]
     front = l.depth + p.wrist_depth
-    lb, lf = l.frame.point(pivot_u(l), -p.wall), l.frame.point(pivot_u(l), front)
-    rb, rf = r.frame.point(pivot_u(r), -p.wall), r.frame.point(pivot_u(r), front)
+    lb, lf = l.frame.point(pivot_u(l), l.top - p.wall), l.frame.point(pivot_u(l), front)
+    rb, rf = r.frame.point(pivot_u(r), r.top - p.wall), r.frame.point(pivot_u(r), front)
     t, _ = _xy_line_intersection(rb, rf - rb, lb, lf - lb)
     if t >= 1:  # pivot lines cross in front of the wrist rest: no centre region
         return None
@@ -341,9 +353,15 @@ def _spaced(a: float, b: float, spacing: float) -> list[float]:
     return [a + (b - a) * i / n for i in range(n + 1)]
 
 
+def gap_screw_points(sec: Section, p: Params) -> list[tuple[float, float]]:
+    """A row of screws along the widened gap between the F-row and the number row."""
+    return [(u, sec.gap_v) for u in _spaced(sec.u0 + 4, sec.u1 - 4, p.screw_spacing)]
+
+
 def screw_points(sec: Section, p: Params) -> list[tuple[float, float]]:
-    """Plate screw centres in KLE mm: a row along the front frame, plus the in-field screws."""
+    """Plate screw centres in KLE mm: rows along the F-row gap and the front frame, plus extras."""
     front = [(u, sec.depth + p.screw_inset) for u in _spaced(sec.u0 + 2, sec.u1 - 2, p.screw_spacing)]
+    front += gap_screw_points(sec, p)
     extra = IN_FIELD_SCREWS[sec.name]
     if sec.name == "right" and sec.edge1 == "outer":  # nav block not split off: its screws are ours
         extra = extra + IN_FIELD_SCREWS["nav"]

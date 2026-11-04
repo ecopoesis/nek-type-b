@@ -16,7 +16,7 @@ half's media/nav/arrow block is folded level.
 
 | Parameter | Right | Left | Notes |
 |---|---|---|---|
-| Layout | `right.kbd.json` | `left.kbd.json` | unchanged |
+| Layout | `right.kbd.json` | `left.kbd.json` | unchanged, except the F-row is 1.33 mm further back (plate screws) |
 | Tent (drop along the rows) | 11.89° | 12.06° | script said 10° |
 | Slope (rise toward the user) | 9.82° | 9.78° | **negative** slope: wrist edge is higher than the back |
 | Row yaw in plan view | 9.91° | 10.89° | script said ±12.5° |
@@ -95,15 +95,13 @@ plate) corner setting the floor ~1.
 - **Plates** are a narrow frame (`case/out/plates/*.dxf`, 1.5 mm 304 stainless) around Type A's exact
   switch/stab cutouts (MX with opening notches). Screws are M2, going up into blind 6 mm tapped holes
   in the 10 mm top skin (prints: M2 thread-forming), at least 1.2 mm from the keycap openings:
-  - **In the key field**, where the skin is wide enough (`IN_FIELD_SCREWS`): left of Esc, in the 0.5u
-    Esc–F1 gap, and right of F4 on the left; at the spine end of the F-row on the right main block;
-    either side of the up arrow on the nav block. The 0.25u gaps (e.g. F-row vs number row) leave a
-    2.8 mm strip, too thin for an M2 tap.
+  - **F-row gap row**: the F-row (and the media row on the nav block) moves 1.33 mm back, widening its
+    gap to the number row from 0.25u (4.76 mm) to 0.32u (6.1 mm). That's enough skin between the
+    keycap openings for an M2 tap with 1.25 mm of metal each side. The main key field is exactly where
+    Type A has it. 4 screws on each half, 2 on the nav block.
   - **Front frame** (6.5 mm) below the bottom row, screws ≤ 60 mm apart.
+  - **Beside the up arrow** on the nav block, 2 more.
   - **Back, outer and spine edges**: 2.5 mm frame, no screws. The fold side is ~2.1 mm.
-  - The right main plate has only one back screw (at the spine end); its F9–F12 corner is held by the
-    front row and the plate's stiffness (1.5 mm steel deflects ~0.03 mm over these spans under a key
-    press).
   Corners are rounded to match the cavity.
 - **At the fold** the skin between the main and nav keycap openings is a 2.7 mm strip. Both openings'
   fold-side walls lean at the bisector of the two plates (~6° off each), so the strip keeps its width to

@@ -12,7 +12,7 @@ uv run pytest                     # geometry checks, including against Type A's 
 |---|---|
 | `nek/params.py` | every tunable dimension; `ALUMINUM` and `PRINT` variants |
 | `nek/frames.py` | where the keys are in space, measured from Type A (do not edit by hand) |
-| `nek/layout.py` | KLE JSON parser (`layouts/*.kbd.json`) |
+| `nek/layout.py` | KLE JSON parser. `layouts/*.kbd.json` are Type A's layouts with the F-row moved back 0.07u (widened gap for plate screws) |
 | `nek/case.py` | the geometry: sections (left, right main, nav), halves, wrist rest, cut planes, cavities, screw holes, pockets |
 | `nek/plates.py` | switch plates: Type A's cutouts in a narrow screw frame, exported as DXF |
 | `nek/printability.py` | X1C bed-fit check (bottom-down, any rotation about Z) |

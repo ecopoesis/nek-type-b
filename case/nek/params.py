@@ -15,9 +15,9 @@ class Params:
     close_gap: bool = True  # slide the halves together until the joint walls reach joint_wall
 
     # --- Plate (steel), screwed up into the case's top skin ---
-    # Screws sit in skin islands inside the key field (around the F-row, beside the up arrow; see
-    # case.IN_FIELD_SCREWS) and along a front frame below the bottom row. The back, outer and spine
-    # edges have no screws, so their frame is minimal.
+    # Screws sit in a row along the F-row gap (widened to 6.1 mm in the Type B layouts so the skin
+    # strip takes an M2 tap), beside the up arrow, and along a front frame below the bottom row. The
+    # back, outer and spine edges have no screws, so their frame is minimal.
     plate_margin: float = 2.5  # frame past the key cells on the back, outer and spine edges
     plate_margin_front: float = 6.5  # front frame, holds a row of screws
     plate_hinge_clearance: float = 0.5  # gap between the main and nav plates at the fold

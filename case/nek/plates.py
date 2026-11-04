@@ -15,6 +15,7 @@ import numpy as np
 from build123d import Circle, ExportDXF, Face, Pos, Unit, Vector, Wire
 
 from .case import Section, kle_rect, plate_rect, rounded, screw_points
+from .layout import load, load_type_a
 from .params import Params
 
 BUILD_DATA = Path(__file__).resolve().parents[2] / "body" / "build_data"
@@ -38,9 +39,22 @@ def _face(points: np.ndarray) -> Face:
     return Face(Wire.make_polygon([Vector(x, -y) for x, y in points], close=True))
 
 
+@lru_cache
+def type_b_cutouts(side: str) -> tuple[np.ndarray, ...]:
+    """Type A's cutouts, each moved with its key to the Type B layout (the F-row moved back)."""
+    a, b = load_type_a(side), load(side)
+    assert len(a) == len(b)
+    out = []
+    for q in type_a_cutouts(side):
+        c = q.mean(axis=0)
+        i = min(range(len(a)), key=lambda j: np.hypot(*(np.array(a[j].center_mm) - c)))
+        out.append(q + (np.array(b[i].center_mm) - np.array(a[i].center_mm)))
+    return tuple(out)
+
+
 def section_cutouts(sec: Section) -> list[np.ndarray]:
     side = "left" if sec.half == "left" else "right"
-    return [q for q in type_a_cutouts(side) if sec.u0 <= q[:, 0].mean() <= sec.u1]
+    return [q for q in type_b_cutouts(side) if sec.u0 <= q[:, 0].mean() <= sec.u1]
 
 
 def plate(sec: Section, p: Params) -> Face:

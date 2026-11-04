@@ -8,7 +8,7 @@ import pytest
 from build123d import Vector
 
 from nek.case import build as build_case
-from nek.case import IN_FIELD_SCREWS, floor_z, joint_plane, keycap_opening, plate_rect, screw_points, sections
+from nek.case import IN_FIELD_SCREWS, floor_z, gap_screw_points, joint_plane, keycap_opening, plate_rect, screw_points, sections
 from nek.frames import TYPE_A
 from nek.params import ALUMINUM, PRINT, VARIANTS
 from nek.plates import plate, section_cutouts
@@ -102,8 +102,8 @@ def test_keys_are_open_and_skin_is_solid(variant, name):
         assert not half.is_inside(world(sec, *k.center_mm, 5.0, p)), k.label
     # just behind the back row: solid skin below the top surface, empty above it
     u = (sec.u0 + sec.u1) / 2
-    assert half.is_inside(world(sec, u, -p.wall / 2, p.top_skin - 0.5, p))
-    assert not half.is_inside(world(sec, u, -p.wall / 2, p.top_skin + 0.5, p))
+    assert half.is_inside(world(sec, u, sec.top - p.wall / 2, p.top_skin - 0.5, p))
+    assert not half.is_inside(world(sec, u, sec.top - p.wall / 2, p.top_skin + 0.5, p))
 
 
 def _walk(half, sec, p, start, direction):
@@ -133,7 +133,7 @@ def test_walls_and_panel_recess(variant, name, wall):
     start, direction = {
         ("outer", "left"): ((sec.u0 - p.wall - 3, d / 2), (1, 0)),
         ("outer", "nav"): ((sec.u1 + p.wall + 3, d / 2), (-1, 0)),
-        ("back", name): ((u_mid, -p.wall - 3), (0, 1)),
+        ("back", name): ((u_mid, sec.top - p.wall - 3), (0, 1)),
         ("front", name): ((u_mid, d + p.wall_front + 3), (0, -1)),
     }[(wall, name if wall == "outer" else name)]
     prof, step = _walk(half, sec, p, start, direction)
@@ -263,13 +263,15 @@ def test_fold_walls_clear_keycaps(name):
 
 @pytest.mark.parametrize("name", ["left", "right", "nav"])
 def test_in_field_screws_have_metal_around_them(name):
-    """In-field screws: >= 1.2 mm of skin around the M2 tap, >= 1.5 mm of steel around the plate hole."""
+    """F-gap and in-field screws: >= 1.2 mm of skin around the M2 tap, >= 1.5 mm of steel around the
+    plate hole."""
     p = ALUMINUM
     sec = sections(p)[name]
     opening = keycap_opening(sec, p)
     x0, y0, x1, y1 = plate_rect(sec, p)
-    assert IN_FIELD_SCREWS[name]
-    for u, v in IN_FIELD_SCREWS[name]:
+    pts = gap_screw_points(sec, p) + IN_FIELD_SCREWS[name]
+    assert len(gap_screw_points(sec, p)) >= 2
+    for u, v in pts:
         assert opening.distance_to(Vector(u, -v, 0)) - p.tap_hole_d / 2 >= 1.2, (u, v)
         hole_r = p.plate_hole_d / 2
         assert min(u - x0, x1 - u, v - y0, y1 - v) - hole_r >= 1.5, (u, v)

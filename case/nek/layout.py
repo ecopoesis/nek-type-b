@@ -55,10 +55,18 @@ def parse_kle(rows: list) -> list[Key]:
     return keys
 
 
+TYPE_A_LAYOUT_DIR = Path(__file__).resolve().parents[2] / "body" / "build_data"
+
+
 def load(side: str) -> list[Key]:
+    """Type B layout (Type A's, with the F-row moved back to widen the gap for plate screws)."""
     return parse_kle(json.loads((LAYOUT_DIR / f"{side}.kbd.json").read_text()))
 
 
+def load_type_a(side: str) -> list[Key]:
+    return parse_kle(json.loads((TYPE_A_LAYOUT_DIR / f"{side}.kbd.json").read_text()))
+
+
 def extent_mm(keys: list[Key]) -> tuple[float, float]:
-    """(width, depth) of the key area in mm. Layouts start at 0,0."""
+    """(right edge, front edge) of the key area in mm (KLE x and y maxima)."""
     return (max(k.cell_mm[2] for k in keys), max(k.cell_mm[3] for k in keys))
